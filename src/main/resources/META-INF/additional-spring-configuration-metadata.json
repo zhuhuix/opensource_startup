@@ -1,0 +1,18 @@
+{
+  "properties": [
+    {
+      "name": "swagger.enabled",
+      "type": "java.lang.String",
+      "description": "Description for swagger.enabled."
+    },
+    {
+      "name": "wxMini.appId",
+      "type": "java.lang.String",
+      "description": "Description for wxMini.appId."
+    },
+    {
+      "name": "wxMini.secret",
+      "type": "java.lang.String",
+      "description": "Description for wxMini.secret."
+    }
+  ] }
