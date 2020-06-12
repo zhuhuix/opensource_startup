@@ -56,4 +56,9 @@ public class Constant {
      * 定义KB的计算常量
      */
     public static final int KB = 1024;
+
+    /**
+     * 定义Redis缓存过期时间
+     */
+    public static final int CACHE_TIMEOUT_HOUR=2;
 }

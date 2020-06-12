@@ -9,8 +9,10 @@ import com.zhuhuix.startup.security.service.AuthService;
 import com.zhuhuix.startup.security.service.UserService;
 import com.zhuhuix.startup.security.service.dto.AuthUserDto;
 import com.zhuhuix.startup.security.utils.JwtTokenUtils;
+import com.zhuhuix.startup.utils.RedisUtils;
 import com.zhuhuix.startup.wechat.miniprogram.service.WxMiniApi;
 import com.zhuhuix.startup.wechat.utils.WeChatUtil;
+import javassist.compiler.Parser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,12 +46,14 @@ public class AuthServiceImpl implements AuthService {
     private final WxMiniApi wxMiniApi;
     private final UserService userService;
     private final JwtSecurityProperties properties;
+    private final RedisUtils redisUtils;
 
-    public AuthServiceImpl(JwtTokenUtils jwtTokenUtils, WxMiniApi wxMiniApi, UserService userService, JwtSecurityProperties properties) {
+    public AuthServiceImpl(JwtTokenUtils jwtTokenUtils, WxMiniApi wxMiniApi, UserService userService, JwtSecurityProperties properties, RedisUtils redisUtils) {
         this.jwtTokenUtils = jwtTokenUtils;
         this.wxMiniApi = wxMiniApi;
         this.userService = userService;
         this.properties = properties;
+        this.redisUtils = redisUtils;
     }
 
     @Override
@@ -119,6 +125,20 @@ public class AuthServiceImpl implements AuthService {
             authUserDto.setToken(properties.getTokenStartWith() + token);
 
         }
+
+        // 将当前用户信息与登录时间写入Redis缓存的哈希表
+        String key = authUserDto.getUserInfo().getOpenId();
+        redisUtils.hashSet(key, "id", authUserDto.getUserInfo().getId());
+        redisUtils.hashSet(key, "nickName", authUserDto.getUserInfo().getNickName());
+        redisUtils.hashSet(key, "getAvatarUrl", authUserDto.getUserInfo().getAvatarUrl());
+        redisUtils.hashSet(key, "lastLoginTime", Timestamp.valueOf(LocalDateTime.now()));
+        // 当前用户的登录次数加1
+        Long loginCount = 1L;
+        Object obj = redisUtils.hashGet(key, "loginCount");
+        if (obj != null) {
+            loginCount += Long.valueOf(String.valueOf(obj));
+        }
+        redisUtils.hashSet(key, "loginCount", loginCount);
 
         return result.ok(authUserDto);
     }
