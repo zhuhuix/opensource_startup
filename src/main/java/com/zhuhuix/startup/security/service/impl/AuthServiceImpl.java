@@ -9,10 +9,10 @@ import com.zhuhuix.startup.security.service.AuthService;
 import com.zhuhuix.startup.security.service.UserService;
 import com.zhuhuix.startup.security.service.dto.AuthUserDto;
 import com.zhuhuix.startup.security.utils.JwtTokenUtils;
+import com.zhuhuix.startup.utils.NetworkUtils;
 import com.zhuhuix.startup.utils.RedisUtils;
 import com.zhuhuix.startup.wechat.miniprogram.service.WxMiniApi;
 import com.zhuhuix.startup.wechat.utils.WeChatUtil;
-import javassist.compiler.Parser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ import java.util.Map;
  * 授权登录接口实现类
  *
  * @author zhuhuix
- * @date 2020-04-07
+ * @date 2020-06-15
  */
 @Slf4j
 @Service
@@ -59,6 +59,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result<AuthUserDto> login(AuthUserDto authUserDto, HttpServletRequest request) {
+        // 通过缓存判断同一IP某一时间段内的登录次数是否超出限定次数
+        String ip = NetworkUtils.getIp(request);
+        String requestLoginIp = "request_login_".concat(ip);
+        long loginCount = redisUtils.increment(requestLoginIp, 1L);
+        if (loginCount == 1) {
+            redisUtils.expire(requestLoginIp, Constant.REQUEST_LOGIN_LIMIT_TIME);
+        }
+        if (loginCount > Constant.REQUEST_LOGIN_LIMIT_COUNT) {
+            log.warn("IP:[".concat(ip).concat("]已超出限定次数"));
+            throw new RuntimeException("时间段内已超出限定次数,请不要频繁登录!");
+        }
+
         Result<AuthUserDto> result = new Result<>();
 
         //authType=1代表是微信登录
@@ -123,22 +135,17 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("生成token错误");
             }
             authUserDto.setToken(properties.getTokenStartWith() + token);
+            authUserDto.setUserInfo(resultUser.getModule());
 
         }
 
         // 将当前用户信息与登录时间写入Redis缓存的哈希表
-        String key = authUserDto.getUserInfo().getOpenId();
+        String key = authUserDto.getOpenId() != null ? authUserDto.getOpenId() : authUserDto.getUserName();
         redisUtils.hashSet(key, "id", authUserDto.getUserInfo().getId());
         redisUtils.hashSet(key, "nickName", authUserDto.getUserInfo().getNickName());
-        redisUtils.hashSet(key, "getAvatarUrl", authUserDto.getUserInfo().getAvatarUrl());
+        redisUtils.hashSet(key, "avatarUrl", authUserDto.getUserInfo().getAvatarUrl());
         redisUtils.hashSet(key, "lastLoginTime", Timestamp.valueOf(LocalDateTime.now()));
-        // 当前用户的登录次数加1
-        Long loginCount = 1L;
-        Object obj = redisUtils.hashGet(key, "loginCount");
-        if (obj != null) {
-            loginCount += Long.valueOf(String.valueOf(obj));
-        }
-        redisUtils.hashSet(key, "loginCount", loginCount);
+        redisUtils.hashSet(key, "ip", ip);
 
         return result.ok(authUserDto);
     }

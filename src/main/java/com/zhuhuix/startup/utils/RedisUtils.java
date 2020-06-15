@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  * Redis工具类
  *
  * @author zhuhuix
- * @date 2020-06-11
+ * @date 2020-06-15
  */
 @Component
 @AllArgsConstructor
@@ -44,15 +44,16 @@ public class RedisUtils {
             e.printStackTrace();
             return false;
         }
+
     }
 
-     /**
-     * 根据键值向hash表中写入对象
+    /**
+     * 根据键值向hash表中写入对象，并设置过期时间
      *
      * @param key   键值 @NotNull
      * @param item  项目 @NotNull
      * @param value 对象 @NotNull
-     * @param time  过期时间 @NotNull
+     * @param time  过期时间(秒) @NotNull
      * @return true 成功 false失败
      */
     public boolean hashSet(String key, String item, Object value, long time) {
@@ -69,7 +70,33 @@ public class RedisUtils {
     }
 
     /**
+     * 根据键值对某一项目的进行累加计数
+     *
+     * @param key 键值
+     * @param l   累加数
+     */
+    public long increment(String key, long l) {
+        return redisTemplate.opsForValue().increment(key, l);
+    }
+
+    /**
+     * 根据键值对某一项目的进行累加计数,并设置过期时间
+     *
+     * @param key  键值
+     * @param l    累加数
+     * @param time 过期时间(秒)
+     */
+    public long increment(String key, long l, long time) {
+        long count = redisTemplate.opsForValue().increment(key, l);
+        if (time > 0) {
+            expire(key, time);
+        }
+        return count;
+    }
+
+    /**
      * 指定缓存的失效时间
+     *
      * @param key  键值 @NotNull
      * @param time 时间(秒) @NotNull
      */
