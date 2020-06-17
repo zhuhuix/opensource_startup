@@ -63,6 +63,16 @@ public class Constant {
     public static final int CACHE_TIMEOUT_HOUR=2;
 
     /**
+     * 定义上传信息缓存队列的名称
+     */
+    public static final String  REDIS_UPLOAD_QUEUE_NAME="upload_queue";
+
+    /**
+     * 定义上传信息缓存队列中元素的数量
+     */
+    public static final int REDIS_UPLOAD_QUEUE_COUNT=10;
+
+    /**
      * 定义请求登录限制计数的时间段区间，需与REQUEST_LOGIN_LIMIT_COUNT同时使用
      */
     public static final int REQUEST_LOGIN_LIMIT_TIME=60;

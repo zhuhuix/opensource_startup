@@ -105,16 +105,6 @@ public class AuthServiceImpl implements AuthService {
             } else {
                 authUserDto.setUserInfo(resultUser.getModule());
             }
-
-            //创建token
-            Map<String, Object> claims = new HashMap<>(16);
-            claims.put("roles", "user");
-            String token = jwtTokenUtils.createToken(openId, claims);
-            if (StringUtils.isEmpty(token)) {
-                throw new RuntimeException("生成token错误");
-            }
-            authUserDto.setToken(properties.getTokenStartWith() + token);
-
         }
 
         //authType=0代表是用户名登录
@@ -123,21 +113,19 @@ public class AuthServiceImpl implements AuthService {
             String userName = authUserDto.getUserName();
             //判断用户表中是否存在该用户，不存在则进行解密得到用户信息，并进行新增用户
             Result<User> resultUser = userService.findByUserName(userName);
-            if (resultUser == null || resultUser.getSuccess() == null || resultUser.getSuccess() == false || resultUser.getModule() == null) {
+            if (resultUser == null || resultUser.getSuccess() == null || !resultUser.getSuccess() || resultUser.getModule() == null) {
                 throw new RuntimeException("用户名:" + userName + "无法找到对应的注册帐号");
             }
-
-            //创建token
-            Map<String, Object> claims = new HashMap<>(16);
-            claims.put("roles", "user");
-            String token = jwtTokenUtils.createToken(userName, claims);
-            if (StringUtils.isEmpty(token)) {
-                throw new RuntimeException("生成token错误");
-            }
-            authUserDto.setToken(properties.getTokenStartWith() + token);
-            authUserDto.setUserInfo(resultUser.getModule());
-
         }
+
+        //创建token
+        Map<String, Object> claims = new HashMap<>(16);
+        claims.put("roles", "user");
+        String token = jwtTokenUtils.createToken(authUserDto.getAuthType() == 1?authUserDto.getOpenId():authUserDto.getUserName(), claims);
+        if (StringUtils.isEmpty(token)) {
+            throw new RuntimeException("生成token错误");
+        }
+        authUserDto.setToken(properties.getTokenStartWith() + token);
 
         // 将当前用户信息与登录时间写入Redis缓存的哈希表
         String key = authUserDto.getOpenId() != null ? authUserDto.getOpenId() : authUserDto.getUserName();

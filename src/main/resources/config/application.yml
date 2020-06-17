@@ -30,5 +30,5 @@ spring:
 
 # 微信小程序配置
 wxMini:
-  appId: 自行设置
-  secret: 自行设置
+  appId: 自行配置
+  secret: 自行配置

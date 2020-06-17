@@ -2,6 +2,7 @@ package com.zhuhuix.startup.wechat.miniprogram.domain;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.sql.Update;
 
@@ -19,6 +20,7 @@ import java.sql.Timestamp;
 @Entity
 @Getter
 @Setter
+@ToString
 @Table(name = "crm_index")
 public class CrmIndex implements Serializable {
 

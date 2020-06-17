@@ -5,10 +5,10 @@ import com.alibaba.fastjson.JSONObject;
 import com.zhuhuix.startup.common.base.Result;
 import com.zhuhuix.startup.constant.Constant;
 import com.zhuhuix.startup.security.domain.User;
-import com.zhuhuix.startup.security.repository.UserRepository;
 import com.zhuhuix.startup.security.service.UserService;
 import com.zhuhuix.startup.tools.domain.UploadFile;
 import com.zhuhuix.startup.tools.service.UploadFileTool;
+import com.zhuhuix.startup.utils.RedisUtils;
 import com.zhuhuix.startup.utils.RepositoryUtil;
 import com.zhuhuix.startup.wechat.miniprogram.domain.CrmIndex;
 import com.zhuhuix.startup.wechat.miniprogram.domain.Customer;
@@ -28,14 +28,15 @@ import org.springframework.web.multipart.MultipartFile;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 微信小程序CRM实现类
  *
  * @author zhuhuix
  * @date 2020-04-20
+ * @date 2020-06-17 将最新的上传信息推入Redis队列
  */
 @Slf4j
 @AllArgsConstructor
@@ -50,6 +51,8 @@ public class WxMiniCrmImpl implements WxMiniCrm {
     private final CustomerRepository customerRepository;
 
     private final UserService userService;
+
+    private final RedisUtils redisUtils;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -88,6 +91,13 @@ public class WxMiniCrmImpl implements WxMiniCrm {
             crmIndex.setJson(json);
             crmIndex.setOpenId(openId);
             crmIndex.setPath(uploadFile.getPath());
+
+            // 将最新10条上传的信息放入redis缓存
+            if (redisUtils.size(Constant.REDIS_UPLOAD_QUEUE_NAME) >= Constant.REDIS_UPLOAD_QUEUE_COUNT) {
+                log.warn(Constant.REDIS_UPLOAD_QUEUE_NAME.concat("队列已满，移除最旧上传信息:") + redisUtils.rightPop(Constant.REDIS_UPLOAD_QUEUE_NAME));
+            }
+            log.info(Constant.REDIS_UPLOAD_QUEUE_NAME.concat("队列增加上传信息:").concat(crmIndex.toString()));
+            redisUtils.leftPush(Constant.REDIS_UPLOAD_QUEUE_NAME, crmIndex);
 
             return new Result<CrmIndex>().ok(crmIndexRepository.save(crmIndex));
 
@@ -146,7 +156,7 @@ public class WxMiniCrmImpl implements WxMiniCrm {
     public Result<List<CrmIndex>> getCrmIndex(String userName, Timestamp createTimeStart, Timestamp createTimeEnd, Boolean downloaded) {
         //根据注册用户名获取微信openId
         Result<User> user = userService.findByUserName(userName);
-        if (user == null || user.getSuccess() == null || user.getSuccess() == false || user.getModule() == null) {
+        if (user == null || user.getSuccess() == null || !user.getSuccess() || user.getModule() == null) {
             throw new RuntimeException("用户名:" + userName + "无法找到对应的注册帐号");
         }
         if (downloaded == null) {
@@ -158,10 +168,11 @@ public class WxMiniCrmImpl implements WxMiniCrm {
 
     @Override
     public Result<CrmIndex> updateCrmIndexDownloaded(Long id, String downloader) {
-        CrmIndex crmIndex = crmIndexRepository.findById(id).get();
-        if (crmIndex == null) {
+        Optional<CrmIndex> optional = crmIndexRepository.findById(id);
+        if (!optional.isPresent()) {
             throw new RuntimeException("无法找到对应的记录");
         }
+        CrmIndex crmIndex = optional.get();
         crmIndex.setDownloaded(true);
         crmIndex.setDownloader(downloader);
         crmIndex.setDownloadTime(Timestamp.valueOf(LocalDateTime.now()));
