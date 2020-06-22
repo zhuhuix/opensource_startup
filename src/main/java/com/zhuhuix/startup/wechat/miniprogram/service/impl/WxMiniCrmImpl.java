@@ -37,6 +37,7 @@ import java.util.Optional;
  * @author zhuhuix
  * @date 2020-04-20
  * @date 2020-06-17 将最新的上传信息推入Redis队列
+ * @date 2020-06-22 记录并将客户信息通过Redis集合缓存
  */
 @Slf4j
 @AllArgsConstructor
@@ -138,6 +139,9 @@ public class WxMiniCrmImpl implements WxMiniCrm {
                     target.setOpenId(openId);
                 }
                 wxScanDto.setReturnObject(customerRepository.save(target));
+                // 将用户增加的客户信息添加到redis集合中
+                redisUtils.setAdd(openId.concat("_customer"),customer.toString());
+
                 return new Result<WxScanDto>().ok(wxScanDto);
             } catch (JSONException ex) {
                 throw new RuntimeException("json转换失败:" + ex.getMessage());

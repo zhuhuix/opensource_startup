@@ -21,32 +21,32 @@ import java.sql.Timestamp;
 @Getter
 @Setter
 @Table(name = "customer")
-public class Customer implements Serializable{
+public class Customer implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @NotNull(groups = Update.class)
     private Long id;
 
-    @Column(name="open_id")
+    @Column(name = "open_id")
     private String openId;
 
     /**
      * 客户代码
      */
-    @Column(name="customer_code")
+    @Column(name = "customer_code")
     private String customerCode;
 
     /**
      * 客户名称
      */
-    @Column(name="customer_name")
+    @Column(name = "customer_name")
     private String customerName;
 
     /**
      * 首字母
      */
-    @Column(name="first_letter")
+    @Column(name = "first_letter")
     private String firstLetter;
 
     /**
@@ -56,7 +56,6 @@ public class Customer implements Serializable{
     @CreationTimestamp
     private Timestamp createTime;
 
-
     /**
      * 更新时间
      */
@@ -64,4 +63,11 @@ public class Customer implements Serializable{
     @UpdateTimestamp
     private Timestamp updateTime;
 
+    @Override
+    public String toString() {
+        return "Customer{" +
+                "customerCode='" + customerCode + '\'' +
+                ", customerName='" + customerName + '\'' +
+                '}';
+    }
 }
