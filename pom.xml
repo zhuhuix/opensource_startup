@@ -50,7 +50,7 @@
         <!--fastjson版本号-->
         <fastjson.version>1.2.58</fastjson.version>
         <!--mysql版本号-->
-        <mysql.version>5.1.47</mysql.version>
+        <mysql.version>8.0.28</mysql.version>
         <!--swagger版本号-->
         <swagger.version>2.9.2</swagger.version>
     </properties>
